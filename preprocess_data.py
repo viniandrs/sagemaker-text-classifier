@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
-import dotenv
 import click
+from text_classifier.s3 import check_resource_on_s3, upload_datasets_to_s3
+from text_classifier.utils import tokenize_and_save_datasets
 
 
 @click.command()
@@ -11,25 +12,14 @@ import click
     "--s3_bucket", type=str, required=False, help="S3 bucket to upload processed data"
 )
 def main(padding_length, s3_bucket):
-    from datasets import load_from_disk
-
-    try:
-        load_from_disk("data/preprocessed/train")
-        load_from_disk("data/preprocessed/test")
-        print("Train and test datasets already exists. Skipping preprocessing.")
-    except FileNotFoundError:
-        tokenize_and_save_datasets(padding_length)
-
-    if not s3_bucket:
-        print("No S3 bucket specified. Skipping upload.")
+    assert s3_bucket is not None, "S3 bucket must be provided for uploading datasets."
+    
+    if check_resource_on_s3("data/preprocessed/train") and check_resource_on_s3("data/preprocessed/test"):
+        print("Train and test datasets already exists on S3. Nothing to do.")
         return
-
-    from text_classifier.utils import tokenize_and_save_datasets
-    from text_classifier.s3 import upload_datasets_to_s3
-
+    
+    tokenize_and_save_datasets(padding_length)
     upload_datasets_to_s3(s3_bucket)
 
-
 if __name__ == "__main__":
-    dotenv.load_dotenv()
     main()

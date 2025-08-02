@@ -1,4 +1,7 @@
-def train(
+import os
+import argparse
+
+def train_sagemaker(
     epochs, batch_size, learning_rate, s3_bucket
 ):
     from transformers import (
@@ -6,25 +9,22 @@ def train(
         Trainer,
         TrainingArguments,
     )
-    import numpy as np
-
-    if s3_bucket is not None:
-        from text_classifier.s3 import load_datasets_from_s3
-        train_dataset, test_dataset = load_datasets_from_s3(s3_bucket)
-    else:
-        from datasets import load_from_disk
-        train_dataset = load_from_disk("data/preprocessed/train")
-        test_dataset = load_from_disk("data/preprocessed/test")
+    from datasets import load_from_disk
 
     try:
-        model = AutoModelForSequenceClassification.from_pretrained("models/distilbert-base-uncased", num_labels=2)
-    except FileNotFoundError:
-        model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
+        train_dataset = load_from_disk(os.environ["SM_CHANNEL_TRAIN"])
+        test_dataset = load_from_disk(os.environ["SM_CHANNEL_TEST"])
+    except Exception:
+        print("Error loading datasets. Ensure they are available either in S3 or locally.")
+        return
+
+    model = AutoModelForSequenceClassification.from_pretrained("distilbert-base-uncased", num_labels=2)
 
     # Metrics
     import evaluate
-    metric = evaluate.load("accuracy")
+    import numpy as np
 
+    metric = evaluate.load("accuracy")
     def compute_metrics(eval_pred):
         logits, labels = eval_pred
         predictions = np.argmax(logits, axis=-1)
@@ -32,7 +32,7 @@ def train(
 
     # Training arguments
     training_args = TrainingArguments(
-        output_dir="models/fine-tuned",  # SageMaker saves model artifacts here
+        output_dir=os.environ["SM_MODEL_DIR"],  # SageMaker saves model artifacts here
         evaluation_strategy="epoch",
         learning_rate=learning_rate,
         per_device_train_batch_size=batch_size,
@@ -57,3 +57,15 @@ def train(
     trainer.save_model("models/fine-tuned")
 
     return trainer
+
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--epochs", type=int, default=3, help="Number of training epochs")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size for training and evaluation")
+    parser.add_argument("--learning_rate", type=float, default=2e-5, help="Learning rate for training")
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    train_sagemaker(**vars(args))
