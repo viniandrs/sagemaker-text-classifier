@@ -3,7 +3,7 @@ import boto3
 from transformers import AutoTokenizer
 from datasets import load_dataset
 
-def tokenize_and_save_datasets(padding_length=256):
+def load_and_tokenize_datasets(padding_length=256):
     dataset = load_dataset("imdb")
     train_data, test_data = dataset["train"], dataset["test"]
 
@@ -21,10 +21,7 @@ def tokenize_and_save_datasets(padding_length=256):
     train_dataset = train_data.map(tokenize, batched=True)
     test_dataset = test_data.map(tokenize, batched=True)
 
-    # Save processed datasets to disk
-    train_dataset.save_to_disk("data/preprocessed/train_processed")
-    test_dataset.save_to_disk("data/preprocessed/test_processed")
-    print("Train and test datasets processed and saved to disk.")
+    return train_dataset, test_dataset
 
 def setup_aws_session():
     try:

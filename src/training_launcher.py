@@ -2,7 +2,7 @@ import os
 import argparse
 
 def train_sagemaker(
-    epochs, batch_size, learning_rate, s3_bucket
+    epochs, batch_size, learning_rate
 ):
     from transformers import (
         AutoModelForSequenceClassification,

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-import logging
+# import logging
 import click
 import dotenv
 
@@ -10,9 +10,8 @@ import dotenv
 @click.option(
     "--learning-rate", type=float, default=5e-5, help="Learning rate for training. Default is 5e-5."
 )
-@click.option("--s3-bucket", default=None, help="S3 bucket name for datasets. If not provided, local datasets will be used.")
-def main(epochs, s3_bucket, batch_size, learning_rate):  
-    assert s3_bucket is not None, "S3 bucket must be provided for SageMaker training."
+@click.option("--s3-bucket", required=True, help="S3 bucket name for datasets. Required.")
+def main(epochs, s3_bucket, batch_size, learning_rate):
 
     from sagemaker.huggingface import HuggingFace
     from text_classifier.utils import setup_aws_session
@@ -20,10 +19,14 @@ def main(epochs, s3_bucket, batch_size, learning_rate):
     setup_aws_session()
 
     estimator = HuggingFace(
-        entry_point="src/train.py",
+        entry_point="training_launcher.py",
         source_dir="src",
-        dependencies=["text_classifier"],  # Include other modules
+        # dependencies=["src/text_classifier"],  # Include other modules
         instance_type="ml.g4dn.xlarge",
+        instance_count=1,
+        # use_spot_instances=True,
+        # max_wait=7200,
+        # max_run=3600,
         role=dotenv.get_key(dotenv.find_dotenv(), "SAGEMAKER_ROLE"),
         pytorch_version="1.13",
         transformers_version="4.26",
@@ -32,7 +35,6 @@ def main(epochs, s3_bucket, batch_size, learning_rate):
             "epochs": epochs,
             "batch_size": batch_size,
             "learning_rate": learning_rate,
-            "s3_bucket": s3_bucket
         },
     )
 
