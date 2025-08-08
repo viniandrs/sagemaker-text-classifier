@@ -1,11 +1,10 @@
 import dotenv
 import boto3
 from transformers import AutoTokenizer
-from datasets import load_dataset
+from datasets import DatasetDict, load_dataset
 
 def load_and_tokenize_datasets(padding_length=256):
     dataset = load_dataset("imdb")
-    train_data, test_data = dataset["train"], dataset["test"]
 
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
@@ -17,11 +16,14 @@ def load_and_tokenize_datasets(padding_length=256):
             max_length=padding_length,
         )
 
-    # Tokenize datasets
-    train_dataset = train_data.map(tokenize, batched=True)
-    test_dataset = test_data.map(tokenize, batched=True)
+    # Tokenized dataset dict
+    tokenized_dataset = DatasetDict({
+        "train": dataset["train"].map(tokenize, batched=True),
+        "test": dataset["test"].map(tokenize, batched=True)
+    })
 
-    return train_dataset, test_dataset
+    # print("Sample processed item:", tokenized_dataset["train"][0])
+    return tokenized_dataset["train"], tokenized_dataset["test"]
 
 def setup_aws_session():
     try:

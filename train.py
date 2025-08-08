@@ -21,16 +21,16 @@ def main(epochs, s3_bucket, batch_size, learning_rate):
     estimator = HuggingFace(
         entry_point="training_launcher.py",
         source_dir="src",
-        # dependencies=["src/text_classifier"],  # Include other modules
+        dependencies=["text_classifier"],  # Include other modules
         instance_type="ml.g4dn.xlarge",
         instance_count=1,
         # use_spot_instances=True,
         # max_wait=7200,
         # max_run=3600,
         role=dotenv.get_key(dotenv.find_dotenv(), "SAGEMAKER_ROLE"),
-        pytorch_version="1.13",
-        transformers_version="4.26",
-        py_version="py39",
+        pytorch_version="2.1.0",
+        transformers_version="4.36.0",
+        py_version="py310",
         hyperparameters={
             "epochs": epochs,
             "batch_size": batch_size,
@@ -39,8 +39,8 @@ def main(epochs, s3_bucket, batch_size, learning_rate):
     )
 
     estimator.fit({
-        "train": f"s3://{s3_bucket}/data/train",
-        "test": f"s3://{s3_bucket}/data/test"
+        "train": f"s3://{s3_bucket}/data/train/",
+        "test": f"s3://{s3_bucket}/data/test/"
     })
 
 
